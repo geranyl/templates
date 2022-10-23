@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Metabolic Profile</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/purecss@2.1.0/build/base-min.css">
+    <style>
+        .main-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            max-width: 800px;
+            padding: 10px;
+        }
+
+        h1 {
+            margin-bottom: 0.0em;
+        }
+
+        h2 {
+            margin-bottom: 0.1em;
+        }
+
+        h4 {
+            margin-bottom: 0.1em;
+        }
+
+        .note {
+            font-size: smaller;
+            background-color: rgb(184, 204, 223);
+            padding: 2em;
+        }
+
+        .clip {
+            background-color: rgb(216, 218, 221);
+            font-size: smaller;
+            padding: 2em;
+            border-radius: 20px;
+            max-width: 50%;
+            margin: 10px 0;
+            white-space: pre-line;
+        }
+
+
+        .button {
+            width: 20%;
+            appearance: none;
+            background-color: #FAFBFC;
+            border: 1px solid rgba(27, 31, 35, 0.15);
+            border-radius: 6px;
+            box-shadow: rgba(27, 31, 35, 0.04) 0 1px 0, rgba(255, 255, 255, 0.25) 0 1px 0 inset;
+            box-sizing: border-box;
+            color: #24292E;
+            cursor: pointer;
+            display: inline-block;
+            font-family: -apple-system, system-ui, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+            font-size: 14px;
+            font-weight: 500;
+            line-height: 20px;
+            list-style: none;
+            padding: 6px 16px;
+            position: relative;
+            transition: background-color 0.2s cubic-bezier(0.3, 0, 0.5, 1);
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            vertical-align: middle;
+            white-space: nowrap;
+            word-wrap: break-word;
+          }
+
+          .button:hover {
+            background-color: #F3F4F6;
+            text-decoration: none;
+            transition-duration: 0.1s;
+          }
+
+          .button:disabled {
+            background-color: #FAFBFC;
+            border-color: rgba(27, 31, 35, 0.15);
+            color: #959DA5;
+            cursor: default;
+          }
+
+          .button:active {
+            background-color: #EDEFF2;
+            box-shadow: rgba(225, 228, 232, 0.2) 0 1px 0 inset;
+            transition: none 0s;
+          }
+
+          .button:focus {
+            outline: 1px transparent;
+          }
+
+          .button:before {
+            display: none;
+          }
+
+          .button:-webkit-details-marker {
+            display: none;
+          }
+    </style>
+    <script type="text/javascript" src="commonFunctions.js"></script>
+    <script type="text/javascript" src="dat.gui.min.js"></script>
+    <script>
+        let patient = {
+            age: 65,
+            height: "5'5",
+            weight: 250,
+            isImperial: true,
+            gender: 'female',
+            smoker: true,
+            diabetes: true,
+            prematureFamilyCVD: false,
+            tc: 3.82,
+            hdl: 1.29,
+            ldl: 1.37,
+            tg: 2.53,
+            sbp: 140,
+            onHtnMeds: true,
+            AST: 14,
+            ALT: 9,
+            platelets: 401
+        }
+
+        window.onload = function () {
+            var gui = new dat.GUI({ name: 'Patient GUI' });
+            gui.add(patient, 'age', 30, 100, 1);
+            gui.add(patient, 'height');
+            gui.add(patient, 'weight');
+            gui.add(patient, 'isImperial').name('Ft/Lbs');
+            gui.add(patient, 'gender', ['male', 'female']).name('gender');
+            gui.add(patient, 'smoker');
+            gui.add(patient, 'diabetes');
+            gui.add(patient, 'onHtnMeds').name('HTN Meds');
+            gui.add(patient, 'prematureFamilyCVD').name('FHx Early CVD');
+            gui.add(patient, 'sbp').name('SBP');
+            var lipidsMenu = gui.addFolder('lipids');
+            lipidsMenu.add(patient, 'tc').name('Cholesterol');
+            lipidsMenu.add(patient, 'hdl').name('HDL-C');
+            lipidsMenu.add(patient, 'ldl').name('LDL-C');
+            lipidsMenu.add(patient, 'tg').name('TG');
+            var fib4Menu = gui.addFolder('Liver Fibrosis Score (Fib-4)');
+            fib4Menu.add(patient, 'AST');
+            fib4Menu.add(patient, 'ALT');
+            fib4Menu.add(patient, 'platelets');
+
+            patient.submitValues = function () {
+                generateProfile();
+            };
+            gui.add(patient, 'submitValues').name('Submit');
+            generateProfile();
+
+            function generateProfile() {
+                let bmi = getBMI(patient.height, patient.weight, patient.isImperial);
+                let bmiNum = Number(bmi);
+                let patientHeightCm = 0;
+                let patientWeightKg = 0;
+                let clipboardText = '';
+                if (patient.isImperial === true) {
+                    let weight = parseInt(patient.weight);
+                    let height = patient.height;
+                    weight /= 2.205;
+                    let arr = height.split("'");
+                    let ft = parseInt(arr[0]);
+                    let inches = parseInt(arr[1]);
+                    height = (inches + ft * 12) * 2.54;
+                    patientHeightCm = Math.round(height);
+                    patientWeightKg = Math.round(weight);
+                }
+
+                let bmiClass = '';
+                if (bmiNum >= 30 && bmiNum < 35) {
+                    bmiClass = 'Class I Obesity';
+                } else if (bmiNum >= 35 && bmiNum < 40) {
+                    bmiClass = 'Class II Obesity';
+                } else if (bmiNum >= 40) {
+                    bmiClass = 'Class III Obesity';
+                }
+
+                byId("bmi").textContent = bmi;
+                byId("bmi-class").textContent = bmiClass;
+                byId("height-weight").textContent = 'Height ' + patientHeightCm + ' cm. Weight ' + patientWeightKg + ' kg';
+
+                clipboardText += 'BMI:' + bmi + ' Height ' + patientHeightCm + ' cm. Weight ' + patientWeightKg + ' kg';
+
+                let frs = getFraminghamScore();
+                //console.log('framingham', frs.points, frs.risk, frs.modified)
+                byId("frs-points").textContent = frs.points;
+                byId("frs-risk").textContent = frs.risk;
+                byId("frs-heart-age").textContent = frs.heartAge;
+
+                clipboardText += '\r\n FRS: ' + frs.risk + '%';
+                clipboardText += '\r\n Heart Age: ' + frs.heartAge + '%';
+
+
+                if (parseFloat(frs.modified)) {
+                    byId("frs-modified").textContent = "Modified FRS is applicable and this individual has a doubled cardiovascular disease risk percentage of " + frs.modified + "% because of a positive history of premature cardiovascular disease."
+                    clipboardText += '\n Modified FRS for FHx of early CVD: ' + frs.modified + '%';
+                }
+
+                let lipids = "Total Cholesterol " + patient.tc + ", HDL-C " + patient.hdl + ", non-HDL-C " + (roundNum(Number(patient.tc) - Number(patient.hdl), 2)) + ", LDL-C " + patient.ldl + ", triglycerides " + patient.tg;
+                byId("patient-lipids").textContent = lipids;
+                let fib4Result = getFib4();
+                byId("fib-4").textContent = fib4Result;
+
+                clipboardText += '\r\n Lipids: ' + lipids;
+                clipboardText += '\r\n Fib-4: ' + fib4Result;
+
+                byId("for-clipboard").textContent = clipboardText;
+
+            }
+        }
+    </script>
+
+
+
+</head>
+
+<body>
+    <div class="main-container">
+        <div class="container">
+            <h1>Metabolic Profile</h1>
+            <p><small>Page last updated October 23, 2022</small></p>
+            <h4>For Clipboard</h4>
+            <div id="for-clipboard" class="clip"></div>
+            <button class="button" id="copy">Copy To Clipboard</button>
+            <h2>BMI</h2>
+            <p><span id="bmi"></span> kg/m<sup>2</sup> <span id="bmi-class"></span> <span id="height-weight"></span></p>
+            <h2> Fibrosis-4 Score (FIB-4)</h2>
+            <p><span id="fib-4"></span></p>
+            <p>Consider liver fibrosis if >1.3</p>
+            <h2>Framingham Risk Score - Estimation of 10-year CVD Risk</h2>
+            <p>This individual has an FRS of <span id="frs-risk"></span>% (total points: <span id="frs-points"></span>).
+                <span id="frs-modified"></span>
+            </p>
+            <p>Their heart age is <span id="frs-heart-age"></span> years old.</p>
+
+            <p>Lipids: <span id="patient-lipids"></span></p>
+
+            <p><a href="https://ccs.ca/eguidelines/Content/Resources/Images/Dyslipidemia/FRS_eng_2017_fnl1.jpg">CCS FRS
+                    Resource</a></p>
+            <div id="lipid-2021" class="note">
+                <h3>CCS 2021 Lipid Guidelines</h3>
+                <p>
+                <h4>Low FRS &lt;10% </h4> Statins not recommend unless: a) LDL-C &geq;5.0 mmol/L (or ApoB&geq;1.45 g/L
+                or
+                non-HDL-C &geq;4.2mmol/L)</10>, <strong>or</strong> b) FRS is 5%-9.9% with LDL-C &geq;3.5 mmol/L
+                (or non-HDL-C &geq;4.2mmol/L or ApoB &geq; 1.05 g/L) particularly with other CV risk modifiers
+                (e.g. FHx, Lp(a)&geq; 100 nmol/L, or CAC > 0 AU.</p>
+                <p>
+                <h4>Intermediate FRS 10-19%</h4> Statins are recommended if any of the following:
+                <ul>
+                    <li>LDL-C &geq;3.5 mmol/L</li>
+                    <li>non-HDL-C &geq;4.2 mmol/L</li>
+                    <li>ApoB &geq;1.05 g/L</li>
+                    <li>Men &geq; 50 and women &geq; 60 yo with one additional risk factor: low HDL-C, IFG, high
+                        waist circumference, smoker, or HTN</li>
+                    <li>presence of other risk modifiers: hsCRP &geq;2.0 mg/L, CAC > 0 AU, family history of
+                        premature CAD, Lp(a)&geq; 100 nmol/L.</li>
+                </ul>
+                </p>
+                <p>
+                <h4>High FRS >=20%</h4> Statins are recommended.</p>
+                <p><em>FRS does not apply to statin indicated conditions such as: LDL &geq; 5.0 mmol/L, most
+                        patients with diabetes, patients with CKD, and established atherosclerotic
+                        cardiovascular disease (ASCVD).</em></p>
+                <p>
+                    Familial hypercholesterolemia or genetic dyslipidemia:
+                <ul>
+                    <li>LDL &geq; 5.0 mmol/L, or</li>
+                    <li>ApoB &geq; 1.45 g/L, or</li>
+                    <li>non-HDL-C &geq; 5.8 mmol/L</li>
+                </ul>
+                </p>
+                <p>
+                    Most patients with diabetes:
+                <ul>
+                    <li>Age &geq; 40y</li>
+                    <li>Age &geq; 30y & DM &geq; 15y duration</li>
+                    <li>Microvascular disease/li>
+                </ul>
+                </p>
+                <p>Chronic kidney disease:
+                <ul>
+                    <li>Age &geq; 50y and eGFR &lt; 60 mL/min/1.73m<sup>2</sup>, or</li>
+                    <li>ACR > 3 mg/mmol</li>
+                </ul>
+
+                </p>
+
+                <p>
+                    ASCVD:
+                <ul>
+                    <li>Myocardial infarction (MI), acute coronary syndromes (ACS)</li>
+                    <li>Stable angina, documented coronary artery disease using angiography</li>
+                    <li>Stroke, TIA, doucmented carotid disease</li>
+                    <li>Peripheral arterial disease, claudication, and/or ABI &lt;0.9</li>
+                    <li>Abdominal aortic aneurysm (AAA) --- abdominal aorta >3.0 cm or previous aneurysm surgery
+                    </li>
+                </ul>
+                </p>
+
+            </div>
+            <p><small><em>This page is a quickly thrown together tool to help determine metabolic risks. It is not fully
+                        tested and I take no responsibility for its accuracy. Use at your own risk. </em></small></p>
+        </div>
+    </div>
+    <script>
+
+        
+        document.getElementById("copy").addEventListener('click', function(e){
+            let btnText = this.textContent;
+            let btn = this;
+            let text = byId('for-clipboard').textContent;
+            console.log(text)
+            copyTextToClipboard(text);
+            btn.textContent = 'copied';
+            setTimeout(() => {
+                btn.textContent = btnText;
+            },1000);
+        })
+
+        function getFib4() {
+            let fib4 = (Number(patient.age) * Number(patient.AST)) / (Number(patient.platelets) * Math.sqrt(Number(patient.ALT)))
+            return roundNum(fib4, 2);
+        }
+
+        function getFraminghamScore() {
+            //Framingham
+            const RISK_MALE_AGE = {
+                30: 0,
+                35: 2,
+                40: 5,
+                45: 7,
+                50: 8,
+                55: 10,
+                60: 11,
+                65: 12,
+                70: 14,
+                75: 15
+            }
+
+            const RISK_FEMALE_AGE = {
+                30: 0,
+                35: 2,
+                40: 4,
+                45: 5,
+                50: 7,
+                55: 8,
+                60: 9,
+                65: 10,
+                70: 11,
+                75: 12
+            }
+
+            const RISK_HDL = {
+                '1.61': '-2',
+                '1.3': '-1',
+                '1.2': '0',
+                '0.9': '1',
+                '0.0': '2'
+            }
+            const RISK_TC_MALE = {
+                '7.21': 4,
+                '6.2': 3,
+                '5.2': 2,
+                '4.1': 1,
+                '0.0': 0
+            }
+            const RISK_TC_FEMALE = {
+                '7.21': 5,
+                '6.2': 4,
+                '5.2': 3,
+                '4.1': 1,
+                '0.0': 0
+            }
+            const RISK_SBP_MALE_UNTREATED = {
+                119: -2,
+                120: 0,
+                130: 1,
+                140: 2,
+                150: 2,
+                161: 3
+            }
+            const RISK_SBP_MALE_TREATED = {
+                119: 0,
+                120: 2,
+                130: 3,
+                140: 4,
+                150: 4,
+                161: 5
+            }
+
+            const RISK_SBP_FEMALE_UNTREATED = {
+                119: -3,
+                120: 0,
+                130: 1,
+                140: 2,
+                150: 4,
+                160: 5
+            }
+
+            const RISK_SBP_FEMALE_TREATED = {
+                119: -1,
+                120: 2,
+                130: 3,
+                140: 5,
+                150: 6,
+                160: 7
+            }
+
+            const TEN_YEAR_CVD_RISK_MALE = {
+                '-3': '<1',
+                '-2': '1.1',
+                '-1': '1.4',
+                '0': '1.6',
+                '1': '1.9',
+                '2': '2.3',
+                '3': '2.8',
+                '4': '3.3',
+                '5': '3.9',
+                '6': '4.7',
+                '7': '5.6',
+                '8': '6.7',
+                '9': '7.9',
+                '10': '9.4',
+                '11': '11.2',
+                '12': '13.3',
+                '13': '15.6',
+                '14': '18.4',
+                '15': '21.6',
+                '16': '25.3',
+                '17': '29.4',
+                '18': '>30',
+                '19': '>30',
+                '20': '>30',
+                '21': '>30'
+            }
+            const TEN_YEAR_CVD_RISK_FEMALE = {
+                '-3': '<1',
+                '-2': '<1',
+                '-1': '1.0',
+                '0': '1.2',
+                '1': '1.5',
+                '2': '1.7',
+                '3': '2.0',
+                '4': '2.4',
+                '5': '2.8',
+                '6': '3.3',
+                '7': '3.9',
+                '8': '4.5',
+                '9': '5.3',
+                '10': '6.3',
+                '11': '7.3',
+                '12': '8.6',
+                '13': '10.0',
+                '14': '11.7',
+                '15': '13.7',
+                '16': '15.9',
+                '17': '18.51',
+                '18': '21.5',
+                '19': '24.8',
+                '20': '27.5',
+                '21': '>30'
+            }
+
+            const HEART_AGE_MALE = {
+                0: 30,
+                1: 32,
+                2: 34,
+                3: 36,
+                4: 38,
+                5: 40,
+                6: 42,
+                7: 45,
+                8: 48,
+                9: 51,
+                10: 54,
+                11: 57,
+                12: 60,
+                13: 64,
+                14: 68,
+                15: 72,
+                16: 76,
+                17: '>80'
+            }
+            const HEART_AGE_FEMALE = {
+                0: '<30',
+                1: 31,
+                2: 34,
+                3: 36,
+                4: 39,
+                5: 42,
+                6: 45,
+                7: 48,
+                8: 51,
+                9: 55,
+                10: 59,
+                11: 64,
+                12: 68,
+                13: 73,
+                14: 79,
+                15: '>80'
+            }
+
+            //objects are not read in order, getPoints will not work with the negative numbers properly
+            function getCVDRisk(pts) {
+                if (pts <= -3) {
+                    return -3;
+                } else if (pts >= 21) {
+                    return 21;
+                }
+                return pts;
+            }
+
+            function getPoints(obj, val) {
+                let points = 0;
+                let dif = undefined;
+                let lastKeyVal = undefined;
+                for (const key in obj) {
+                    let keyVal = Number(key);
+                    if (dif == undefined) {
+                        dif = Math.abs(val - keyVal);
+                        points = obj[key];
+                        lastKeyVal = key;
+                    }
+                    if (val >= keyVal) {
+                        if (Math.abs(val - keyVal) <= dif) {
+                            points = obj[key];
+                            lastKeyVal = key;
+                        }
+                        dif = Math.abs(val - keyVal);
+                    }
+                }
+                if (isNaN(points)) {
+                    return points;
+                } else {
+                    return Number(points);
+                }
+            }
+
+
+            let totalPoints = 0;
+            let risk = 0;
+            let modifiedRisk = 0;
+            let heartAge = 0;
+            let htnTreated = patient.onHtnMeds === true ? 1 : 0;
+            let smoker = patient.smoker === true ? 1 : 0;
+            let age = parseInt(patient.age);
+            let diabetes = patient.diabetes === true ? 1 : 0;
+            let prematureFamilyCVD = patient.prematureFamilyCVD === true ? 1 : 0;
+            if (patient.gender == 'male') {
+                totalPoints += getPoints(RISK_MALE_AGE, parseInt(patient.age));
+                totalPoints += getPoints(RISK_TC_MALE, Number(patient.tc));
+                if (htnTreated) {
+                    totalPoints += getPoints(RISK_SBP_MALE_TREATED, Number(patient.sbp));
+                } else {
+                    totalPoints += getPoints(RISK_SBP_MALE_UNTREATED, Number(patient.sbp));
+                }
+                if (smoker) totalPoints += 4;
+                totalPoints += getPoints(RISK_HDL, Number(patient.hdl));
+                risk = TEN_YEAR_CVD_RISK_MALE[getCVDRisk(totalPoints)];
+                if (totalPoints < 0) {
+                    heartAge = '<30';
+                } else {
+                    heartAge = getPoints(HEART_AGE_MALE, totalPoints);
+                }
+
+            } else if (patient.gender == 'female') {
+                totalPoints += getPoints(RISK_FEMALE_AGE, parseInt(patient.age));
+                totalPoints += getPoints(RISK_TC_FEMALE, Number(patient.tc));
+                if (htnTreated) {
+                    totalPoints += getPoints(RISK_SBP_FEMALE_TREATED, Number(patient.sbp));
+                } else {
+                    totalPoints += getPoints(RISK_SBP_FEMALE_UNTREATED, Number(patient.sbp));
+                }
+                if (smoker) totalPoints += 3;
+                totalPoints += getPoints(RISK_HDL, Number(patient.hdl));
+                risk = TEN_YEAR_CVD_RISK_FEMALE[getCVDRisk(totalPoints)];
+                heartAge = getPoints(HEART_AGE_MALE, totalPoints);
+            }
+
+
+
+            if (prematureFamilyCVD && age >= 30 && age <= 59 && !diabetes) {
+                //modified framingham risk factor
+                modifiedRisk = parseFloat(risk) * 2;
+            }
+
+
+            return { points: totalPoints, risk: risk, modified: modifiedRisk, heartAge: heartAge };
+        }
+
+
+    </script>
+</body>
+
+</html>

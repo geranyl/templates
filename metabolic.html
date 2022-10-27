@@ -159,8 +159,8 @@
             function generateProfile() {
                 let bmi = getBMI(patient.height, patient.weight, patient.isImperial);
                 let bmiNum = Number(bmi);
-                let patientHeightCm = 0;
-                let patientWeightKg = 0;
+                let patientHeightCm = patient.height;
+                let patientWeightKg = patient.weight;
                 let clipboardText = '';
                 if (patient.isImperial === true) {
                     let weight = parseInt(patient.weight);

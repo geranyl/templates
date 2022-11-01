@@ -117,10 +117,10 @@
             smoker: true,
             diabetes: true,
             prematureFamilyCVD: false,
-            tc: 3.82,
-            hdl: 1.29,
-            ldl: 1.37,
-            tg: 2.53,
+            tc: 0.00,
+            hdl: 0.00,
+            ldl: 0.00,
+            tg: 0.00,
             sbp: 140,
             onHtnMeds: true,
             AST: 14,
@@ -141,10 +141,10 @@
             gui.add(patient, 'prematureFamilyCVD').name('FHx Early CVD');
             gui.add(patient, 'sbp').name('SBP');
             var lipidsMenu = gui.addFolder('lipids');
-            lipidsMenu.add(patient, 'tc').name('Cholesterol');
-            lipidsMenu.add(patient, 'hdl').name('HDL-C');
-            lipidsMenu.add(patient, 'ldl').name('LDL-C');
-            lipidsMenu.add(patient, 'tg').name('TG');
+            lipidsMenu.add(patient, 'tc').step(0.01).name('Cholesterol');
+            lipidsMenu.add(patient, 'hdl').step(0.01).name('HDL-C');
+            lipidsMenu.add(patient, 'ldl').step(0.01).name('LDL-C');
+            lipidsMenu.add(patient, 'tg').step(0.01).name('TG');
             var fib4Menu = gui.addFolder('Liver Fibrosis Score (Fib-4)');
             fib4Menu.add(patient, 'AST');
             fib4Menu.add(patient, 'ALT');

@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Periop Template</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/purecss@2.1.0/build/base-min.css">
+    <style>
+        .main-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            max-width: 800px;
+            padding: 10px;
+        }
+    </style>
+     <script src="commonFunctions.js"></script>
+     <script type="text/javascript" src="dat.gui.min.js"></script>
+    <script>
+        //Patient values
+
+        const SURGERY_URGENCY = {
+            EMERGENCY: 'emergency',
+            URGENT: 'urgent',
+            ELECTIVE: 'elective'
+        }
+        const SURGERY_TYPES = {
+            ABDO_LAP: 'Abdominal',
+            ABDO_OPEN: 'Abdominal',
+            ABDO_WALL: 'Abdominal Wall',
+            ABDO_UPPER: 'Abdo Upper',
+            AAA: 'AAA',
+            NEUROSURGERY: 'Neurosurgery',
+            NECK: 'Neck',
+            INTRAPERITONEAL: 'Intraperitoneal',
+            VASCULAR_PERIPHERAL: 'Vascular Peripheral',
+            VASCULAR_SUPRAINGUINAL: 'Vascular Suprainguinal',
+            MAJOR_ORTHO: 'Major Orthopedic',
+            CHEST_OR_CARDIAC: 'Chest/Cardiac'
+        }
+
+        const CARDIAC_SIGNS = {
+            as: 'severe aortic stenosis',
+            ms: 'mitral stenosis',
+            HOCM: 'hypertrophic obstructive cardiomyopathy',
+            phtn: 'pulmonary hypertension',
+            none: ''
+        }
+
+        /** ASA
+         * 1 = a normal healthy patient
+         * 2 = a patient with mild systemic disease
+         * 3 = a patient with severe systemic disease
+         * 4 = a patient with severe systemic disease that is a constant threat to life
+         * **/
+        const ASA = {
+            I: 1,
+            II: 2,
+            III: 3,
+            IV: 4
+        }
+
+        const ASCITES = {
+            ABSENT: 1,
+            SLIGHT: 2,
+            MODERATE: 3
+        }
+
+        /**Encephalopathy
+         * Grade 0: normal consciousness, personality, neurological examination, electroencephalogram
+         * Grade 1: restless, sleep disturbed, irritable/agitated, tremor, impaired handwriting, 5 cps waves
+         * Grade 2: lethargic, time-disoriented, inappropriate, asterixis, ataxia, slow triphasic waves
+         * Grade 3: somnolent, stuporous, place-disoriented, hyperactive reflexes, rigidity, slower waves
+         * Grade 4: unrousable coma, no personality/behavior, decerebrate, slow 2-3 cps delta activity
+         * **/
+        const ENCEPHALOPATHY = {
+            NONE: 1,
+            GRADE1_2: 2,
+            GRADE3_4: 3
+        }
+
+        let patient = {
+            age: 79,
+            gender: 'female',
+            height: 150,
+            weight: 51.5,
+            imperialValues: false,
+            ASA: ASA.II,
+            surgeryType: SURGERY_TYPES.ABDO_LAP,
+            surgeryTiming: SURGERY_URGENCY.ELECTIVE,
+            creatinine: 81,
+            sodium: 142,
+            bilirubin: 3,
+            albumin: 30,
+            platelets: 525,
+            INR: 1.0,
+            BUN: 7.7,
+            ntProBNP: 1116,
+            ischemicHeartDisease: false,
+            cardiacPhysicalSigns: CARDIAC_SIGNS.none,
+            'heart failure': true,
+            decompensatedCHF: false,
+            CVA: false,
+            diabetes: false,
+            'insulin dependent diabetes': false,
+            'recent stroke': false, //0, 3, or 9 months
+            COPD: false,
+            'poor functional status': false,
+            'uncontrolled asthma': false,
+            OSA: false,
+            smoker: false,
+            ascites: ASCITES.ABSENT,
+            NAFLD: false,
+            hypertension: true,
+            chronicSteroids: false,
+            ventilatorDependent: false,
+            cancer: false,
+            coagulationDisorder: false,
+            decompensatedCirrhosis: false,
+            dialysis: false //“Had dialysis twice, or 24 hours of CVVHD, within a week prior to the serum creatinine test?”
+        }
+    </script>
+</head>
+
+<body>
+    <div class="main-container">
+        <div class="container">
+            <h2>Cardiac Risk</h2>
+
+            <p>The patient’s Revised Cardiac Index score is <span id="rcri-points"></span> which predicts a <span
+                    id="rcri-risk"></span>% of myocardial infarction,
+                cardiac arrest, or death at 30 days after non-cardiac surgery.</p>
+
+            <p id="nt-pro-bnp" style="display:none;"> This patient’s NT-proBNP result reclassifies their risk to <span
+                    id="nt-pro-bnp-risk"></span>% of 30
+                day mortality or MI post non-cardiac surgery (Annals of IM, Duceppe et al, 2020).</p>
+
+            <p>This risk estimate does not take into account severe obstructive intracardiac abnormalities such as
+                severe aortic
+                stenosis, severe mitral stenosis, or severe hypertrophic obstructive cardiomyopathy. It also does not
+                take into
+                account severe pulmonary hypertension. </p>
+
+            <p id="physical-signs" style="display:none;">Signs of <span id="physical-signs-text"></span> were found on
+                physical
+                exam and therefore an echocardiogram has been ordered to decide whether to delay, cancel, or proceed
+                with
+                surgery.</p>
+
+            <p id="urgent-surgery" style="display: none;">This patient has an unstable cardiovascular condition (e.g.
+                unstable
+                angina, acute stroke, or recent MI) which
+                places them at greater risk of morbidity and mortality. We recommend consulting the appropriate
+                specialist
+                services for further advice.</p>
+            <p id="ischemic-stroke" style="display: none;">
+                This patient has a history of ischemic stroke <span id="stroke-9-months" style="display: none;">&lt;9
+                    months
+                    prior to the planned
+                    surgery date which is associated with a 1.8 relative risk increase in 30 day mortality and a 4.8
+                    relative
+                    risk
+                    increase in 30 day MACE.</span><span id="stroke-3-months" style="display: none;">&lt;3 months prior
+                    to the
+                    planned surgery date which is associated with a high risk of
+                    post-operative MACE (OR 14.23) and mortality (OR 3.07)</span> (Jorgensen et al, JAMA 2014)
+            </p>
+            <h2>Respiratory Risk</h2>
+
+            <p id="respiratory-risks-container">The patient has the following risk factors which places them at greater
+                risk for
+                post-operative respiratory complications including but not limited to respiratory failure, infection,
+                and
+                atelectasis: <span id="respiratory-risks"></span>.</p>
+
+            <p>Their Arozullah respiratory failure index is <span id="arozullah-points"></span> points which predicts a
+                <span id="arozullah-risk"></span>% risk of postoperative respiratory failure (mechanical ventilation for
+                > 48
+                hours after surgery, or unplanned intubation &leq;30 days after surgery).</p>
+
+            <div id="renal-risk-container">
+                <h2>Renal Risk</h2>
+
+                <p>The patient has the following risk factors which increases their risk of postoperative acute kidney
+                    injury:
+                    <span id="renal-risks"></span>.
+                </p>
+            </div>
+
+            <h2>Hepatic Risk</h2>
+
+            <p>The patient has a MELD score of <span id="meld-points"></span> (90-day mortality risk of <span
+                    id="meld-risk"></span>%) and a Child-Pugh class of <span id="cp-class"></span> (<span
+                    id="cp-points"></span>
+                points). Their VOCAL-Penn score predicts a
+                30-day mortality risk of <span id="vocal-penn-30"></span>, a 90-day mortality risk of <span
+                    id="vocal-penn-90"></span>, a 180-day mortality risk of <span id="vocal-penn-180"></span> and a
+                90-day
+                decompensation risk of <span id="vocal-penn-decomp"></span>. </p>
+            <p id="vocal-penn-accuracy" style="display: none;">In the cohort from which VOCAL-Penn was derived, very few
+                patients had data similar to those of this patient. The calculated predictions are therefore
+                extrapolated to
+                regions in the data where the accuracy is less certain.</p>
+            <p>The VOCAL-PENN score has shown better performance at estimating mortality at 90 days when compared to
+                MELD.</p>
+
+            <p id="hepatic-elective" style="display: none;">Elective surgery is NOT advised as the patient has a high
+                risk of
+                perioperative mortality and morbidity.</p>
+            <!--decompensated cirrhosis, CP class C, or MELD >=15 -->
+
+            <h2>Adrenal Insufficiency Risk</h2>
+
+            <p>The patient has a [high/intermediate/low] risk for adrenal insufficiency based on their history of
+                steroid use.
+            </p>
+
+            <h2>Delirium and Frailty Risk</h2>
+
+            <p>Delirium: The patient [does/does not] have pre-existing cognitive impairment which places them at
+                increased risk
+                of developing delirium post-operatively.</p>
+
+            <p>[*Other delirium risk factors: increasing age, auditory and visual impairment, frailty, functional
+                impairment,
+                polypharmacy, psychotropic use, depression, illness severity, as well as alcohol and substance misuse*]
+            </p>
+
+            <p>Frailty: [*see specific calculators; roughly screen for: cognitive impairment, Hct <35%, albumin <34,>=1
+                    fall in
+                    the past 6 months, ADL dependence (bathing/dressing/transferring/walking/toileting/feeding), slow
+                    timed up
+                    and go*]</p>
+        </div>
+    </div>
+</body>
+<script>
+    window.onload = function () {
+
+        patient.BMI = getBMI(patient.height, patient.weight, patient.imperialValues === true ? true : false);
+        //Cardiac Risk - RCRI
+
+        //cardiac
+        const rcriCalc = {
+            ischemicHeartDisease: patient.ischemicHeartDisease ===true?1:0,
+            chf: patient['heart failure'] === true ? 1 : 0,
+            cva: patient.CVA === true ? 1 : 0,
+            insulin: patient['insulin dependent diabetes'] === true ? 1 : 0,
+            creatinineMoreThan177: parseInt(patient.creatinine) > 177 ? 1 : 0,
+            highRiskSurgery: patient.surgeryType == SURGERY_TYPES.INTRAPERITONEAL || patient.surgeryType == SURGERY_TYPES.CHEST_OR_CARDIAC || patient.surgeryType == SURGERY_TYPES.VASCULAR_SUPRAINGUINAL,  //INTRAPERITONEAL, INTRATHORACIC, SUPRAINGUINAL VASCULAR
+        }
+        let totalRCRI = 0;
+        for (const key in rcriCalc) {
+            totalRCRI += rcriCalc[key];
+        }
+        const rcriRisk = { 0: '3.9', 1: '6.0', 2: '10.1', 3: '15.0' };
+        let rcriRiskString = '';
+        for (const key in rcriRisk) {
+            if (totalRCRI >= parseInt(key)) {
+                rcriRiskString = rcriRisk[key];
+            }
+        }
+        byId("rcri-points").textContent = totalRCRI;
+        byId("rcri-risk").textContent = rcriRiskString;
+
+        //If NT-proBNP present AND it's higher risk than RCRI
+        const ntBnpRisk = { 99: '1.7', 199: '3.0', 200: '7.9', 1500: '15.8' };
+        let ntProBNP = parseInt(patient.ntProBNP);
+        let ntBnpIncreasedRisk = false;
+        let finalNtBnpRiskString = '';
+        let physicalSigns = patient.cardiacPhysicalSigns;
+        for (const key in ntBnpRisk) {
+            if (ntProBNP >= parseInt(key)) {
+                finalNtBnpRiskString = ntBnpRisk[key];
+            }
+        }
+
+        if (parseFloat(rcriRiskString) < parseFloat(finalNtBnpRiskString)) {
+            ntBnpIncreasedRisk = true;
+        }
+
+        if (ntBnpIncreasedRisk) {
+            byId("nt-pro-bnp").style.display = "block";
+            byId("nt-pro-bnp-risk").textContent = finalNtBnpRiskString;
+        }
+        if (physicalSigns) {
+            byId("physical-signs").style.display = "block";
+            byId("physical-signs-text").textContent = physicalSigns;
+        }
+
+        //urgent surgery
+        if (patient.surgeryTiming == SURGERY_URGENCY.URGENT) {
+            byId("urgent-surgery").style.display = "block";
+        }
+
+        //recent stroke
+        let recentStroke = parseInt(patient['recent stroke']);
+        switch (recentStroke) {
+            case 3:
+                byId("stroke-3-months").style.display = "inline";
+                break;
+            case 9:
+                byId("stroke-9-months").style.display = "inline";
+                break;
+            default:
+                break;
+        }
+        if (recentStroke) {
+            byId("ischemic-stroke").style.display = "block";
+        }
+
+        //respiratory
+        //resp variables - arozullah
+        const arozullahVariables = {
+            albumin: patient.albumin,
+            BUN: patient.BUN,
+            poorFunctionalStatus: patient['poor functional status'],
+            COPD: patient.COPD,
+            age: patient.age
+        }
+        //resp variables - risks
+        const respRiskFactors = {
+            'COPD': patient.COPD === true ? 1 : 0,
+            'uncontrolled asthma': patient['uncontrolled asthma'] === true ? 1 : 0,
+            'OSA': patient.OSA === true ? 1 : 0,
+            'age > 60': parseInt(patient.age) > 60 ? 1 : 0,
+            'ASA > II': parseInt(patient.ASA) > 2 ? 1 : 0,
+            'poor functional status': patient['poor functional status'] === true ? 1 : 0,
+            'heart failure': patient['heart failure'] === true ? 1 : 0,
+            'smoking': patient.smoker === true ? 1 : 0,
+            'poor nutritional status (albumin <35)': parseInt(patient.albumin) < 35 ? 1 : 0
+        }
+
+        const respRisk = arozullahRespiratoryFailureIndex(patient.surgeryType, arozullahVariables['albumin'], arozullahVariables['BUN'], arozullahVariables['poorFunctionlStatus'], arozullahVariables['COPD'], arozullahVariables['age']);
+        byId("arozullah-points").textContent = respRisk.arozhullahPoints;
+        byId("arozullah-risk").textContent = respRisk.arozhullahRisk;
+
+        let respRisks = returnRiskList(respRiskFactors);
+        if (respRisks) {
+            byId("respiratory-risks").textContent = respRisks;
+        } else {
+            byId("respiratory-risks-container").style.display = "none";
+        }
+
+        //renal
+        //renal risk variables
+        const renalRiskFactors = {
+            'age ≥56': parseInt(patient.age) > 55 ? 1 : 0,
+            'male': patient.gender === 'male' ? 1 : 0,
+            'active CHF': patient.decompensatedCHF === true ? 1 : 0,
+            'ascites': patient.ascites !== ASCITES.ABSENT ? 1 : 0,
+            'hypertension': patient.hypertension === true ? 1 : 0,
+            'preoperative creatinine of >106 mmol/L': parseInt(patient.creatinine) > 106 ? 1 : 0,
+            'diabetes': patient.diabetes === true ? 1 : 0,
+            'COPD': patient.COPD === true ? 1 : 0,
+            'smoking': patient.smoker === true ? 1 : 0,
+            'chronic steroid use': patient.chronicSteroids === true ? 1 : 0,
+            'cancer': patient.cancer === true ? 1 : 0,
+            'coagulation disorder': patient.coagulationDisorder === true ? 1 : 0,
+            'ventilator dependent': patient.ventilatorDependent === true ? 1 : 0,
+            'obesity': parseInt(patient.BMI) > 30 ? 1 : 0
+        }
+
+        let renalRisks = returnRiskList(renalRiskFactors);
+        if (renalRisks) {
+            byId("renal-risks").textContent = renalRisks;
+        } else {
+            byId("renal-risk-container").style.display = "none";
+        }
+
+        //hepatic
+        const hepaticRisk = {
+            'decompensated': patient.decompensatedCirrhosis,
+            'age': patient.age,
+            'asa': patient.ASA,
+            'bilirubin': patient.bilirubin,
+            'creatinine': patient.creatinine,
+            'albumin': patient.albumin,
+            'platelets': patient.platelets,
+            'bmi': patient.BMI,
+            'NAFLD': patient.NAFLD,
+            'emergency': patient.surgeryTiming,
+            'surgeryType': patient.surgeryType,
+            'sodium': patient.sodium,
+            'INR': patient.INR,
+            'ascites': patient.ascites,
+            'dialysis': patient.dialysis,
+            'encephalopathy': ENCEPHALOPATHY.NONE //none, grade1-2, or grade3-4
+        }
+
+        let MELD = meldScore(hepaticRisk.dialysis, hepaticRisk.creatinine, hepaticRisk.bilirubin, hepaticRisk.INR, hepaticRisk.sodium);
+        let CP = childPughScore(hepaticRisk.bilirubin, hepaticRisk.albumin, hepaticRisk.INR, hepaticRisk.ascites, hepaticRisk.encephalopathy);
+        let vp = vocalPENN(hepaticRisk);
+
+        byId("cp-class").textContent = CP.CLASS;
+        byId("cp-points").textContent = CP.SCORE;
+        byId("meld-points").textContent = MELD.MELD_POINTS;
+        byId("meld-risk").textContent = MELD.MELD_RISK;
+        byId("vocal-penn-30").textContent = vp.span_30;
+        byId("vocal-penn-90").textContent = vp.span_90;
+        byId("vocal-penn-180").textContent = vp.span_180;
+        byId("vocal-penn-decomp").textContent = vp.span_decomp;
+        if (vp.accuracyReduced) byId("vocal-penn-accuracy").style.display = "block";
+
+        if ((hepaticRisk.decompensated === true || CP.SCORE >= 10 || MELD.MELD_POINTS >= 15) && patient.surgeryTiming == SURGERY_URGENCY.ELECTIVE) {
+            byId("hepatic-elective").style.display = "block";
+        }
+
+        console.log(patient)
+    }
+
+    //functions/calculators - NOT wrapped in window.onLoad
+   
+
+    function returnRiskList(riskObject) {
+        var riskArr = [];
+        for (const risk in riskObject) {
+            const riskVal = riskObject[risk];
+            if (riskVal) {
+                riskArr.push(risk);
+            }
+        }
+        if (riskArr.length > 0) {
+            let str = '';
+            for (let i = 0; i < riskArr.length; i++) {
+                if (i < riskArr.length - 2) {
+                    str += riskArr[i] + ', ';
+                } else if (i < riskArr.length - 1) {
+                    str += riskArr[i] + ', and ';
+                } else {
+                    str += riskArr[i];
+                }
+            }
+            return str;
+
+        } else {
+            return null;
+        }
+    }
+
+
+    function arozullahRespiratoryFailureIndex(surgeryType, albumin, BUN, poorFunctionalStatus, COPD, age) {
+        let arozhullahPoints = 0;
+        let arozhullahRiskString = '';
+
+        const arozullahSurgeryTypeVals = {
+            AAA: 27,
+            'Chest/Cardiac': 21,
+            Neurosurgery: 14,
+            'Abdo Upper': 14,
+            'Vascular Peripheral': 14,
+            'Vascular Suprainguinal': 14,
+            Neck: 11
+        }
+
+        let surgeryTypePoints = arozullahSurgeryTypeVals[surgeryType];
+        if (SURGERY_URGENCY.EMERGENCY) {
+            surgeryTypePoints = 11;
+        }
+
+        const arozhullahRisk = {
+            10: '0.5',
+            11: '2.2',
+            20: '5.0',
+            28: '11.6',
+            41: '30.5'
+        }
+        arozhullahPoints = surgeryTypePoints ? surgeryTypePoints : 0;
+        if (albumin < 30) { //g/L
+            arozhullahPoints += 9;
+        }
+        if (BUN > 11) { //mmol/L
+            arozhullahPoints += 8;
+        }
+        if (poorFunctionalStatus) {
+            arozhullahPoints += 7;
+        }
+        if (COPD) {
+            arozhullahPoints += 6;
+        }
+        if (age >= 70) {
+            arozhullahPoints += 6;
+        } else if (age >= 60) {
+            arozhullahPoints += 4;
+        }
+        for (const points in arozhullahRisk) {
+
+            if (arozhullahPoints >= parseInt(points)) {
+                arozhullahRiskString = arozhullahRisk[points];
+            } else if (arozhullahPoints < parseInt(points)) {
+                arozhullahRiskString = arozhullahRisk[points];
+                break;
+            }
+        }
+        return { arozhullahPoints: arozhullahPoints, arozhullahRisk: arozhullahRiskString };
+    }
+
+    //3 month mortality prediction; variables should be no more than 48 hours old
+    function meldScore(dialysisBoolean, creatinine, bilirubin, INR, sodium) {
+        let crUS = creatinine / 88.42; //SI units umol/L, US mg/dL
+        let biliUS = bilirubin / 17.1 //SI unitls umol/l, US mg/dL
+        let dialysis = dialysisBoolean === true ? 1 : 0;
+
+        if (biliUS < 1) biliUS = 1;
+        if (crUS < 1) crUS = 1;
+        if (INR < 1) INR = 1;
+        if (sodium < 125) sodium = 125;
+        if (sodium > 137) sodium = 137;
+
+        if (crUS > 4 || dialysis) crUS = 4;
+
+        let meldI = 0.957 * Math.log(crUS) + 0.378 * Math.log(biliUS) + 1.120 * Math.log(INR) + 0.643;
+        meldI = Math.round(meldI * 100) / 10;
+
+        if (meldI > 11) {
+            meldI = meldI + 1.32 * (137 - sodium) - (0.033 * meldI * (137 - sodium));
+        }
+
+        meldI = Math.round(meldI);
+
+        const meldRisk = {
+            9: '1.9',
+            19: '6.0',
+            29: '19.6',
+            39: '52.6',
+            40: '71.3'
+        }
+        let risk = '';
+        for (const points in meldRisk) {
+            let tempNum = parseInt(points);
+            risk = meldRisk[points];
+            if (meldI < tempNum) {
+                risk = meldRisk[points];
+                break;
+            }
+        }
+
+        return { MELD_POINTS: meldI, MELD_RISK: risk };
+    }
+
+   
+
+    function childPughScore(bilirubin, albumin, INR, ascites, encephalopathy) {
+        let cpScore = 0;
+        if (bilirubin < 34.2) {
+            cpScore += 1;
+        } else if (bilirubin >= 34.2 && bilirubin <= 51.3) {
+            cpScore += 2;
+        } else if (bilirubin > 51.3) {
+            cpScore += 3;
+        }
+        if (albumin > 35) {
+            cpScore += 1;
+        } else if (albumin >= 28 && albumin <= 35) {
+            cpScore += 2;
+        } else if (albumin < 28) {
+            cpScore += 3;
+        }
+        if (INR < 1.7) {
+            cpScore += 1;
+        } else if (INR >= 1.7 && INR <= 2.2) {
+            cpScore += 2;
+        } else if (INR > 2.2) {
+            cpScore += 3;
+        }
+
+        cpScore += ascites;
+        cpScore += encephalopathy;
+        let cpClass = '';
+        if (cpScore < 7) {
+            cpClass = 'A';
+        } else if (cpScore >= 7 && cpScore <= 9) {
+            cpClass = 'B';
+        } else if (cpScore >= 10) {
+            cpClass = 'C';
+        }
+        return { SCORE: cpScore, CLASS: cpClass };
+    }
+
+    function vocalPENN(e) {
+        let bmi = getBMI(e.height, e.weight, e.isImperial);
+        let a = {}
+            , t = parseInt(e.age)
+            , l = parseInt(e.asa) < 2 ? 0 : parseInt(e.asa)
+            , n = e.emergency === true ? 1 : 0
+            , r = e.surgeryType
+            , i = parseInt(e.albumin) / 10
+            , o = parseInt(e.platelets)
+            , s = t
+            , c = l
+            , m = n
+            , u = parseFloat(e.bilirubin) / 17.1
+            , d = e.NAFLD === true ? 1 : 0
+            , p = bmi >= 30 ? 1 : 0
+            , h = "Abdominal" === r ? 1 : 0
+            , E = "Abdominal Wall" === r ? 1 : 0
+            , b = ("Vascular Peripheral" === r ? 1 : 0 || "Vascular Suprainguinal" === r ? 1 : 0)
+            , f = "Major Orthopedic" === r ? 1 : 0
+            , g = "Chest/Cardiac" === r ? 1 : 0
+            , y = i
+            , v = (Math.pow(i - 2.7, 3) * (i > 2.7 ? 1 : 0) - Math.pow(4.4 - 3.7, -1) * (Math.pow(i - 3.7, 3) * (i > 3.7 ? 1 : 0) * (4.4 - 2.7) - Math.pow(i - 4.4, 3) * (i > 4.4 ? 1 : 0) * 1)) / Math.pow(4.4 - 2.7, 2)
+            , N = o
+            , A = (Math.pow(o - 74, 3) * (o > 74 ? 1 : 0) - Math.pow(116, -1) * (Math.pow(o - 153, 3) * (o > 153 ? 1 : 0) * 195 - Math.pow(o - 269, 3) * (o > 269 ? 1 : 0) * 79)) / Math.pow(195, 2)
+            , C = u
+            , M = (Math.pow(u - .39, 3) * (u > .39 ? 1 : 0) - Math.pow(1.05, -1) * (Math.pow(u - .75, 3) * (u > .75 ? 1 : 0) * (1.8 - .39) - Math.pow(u - 1.8, 3) * (u > 1.8 ? 1 : 0) * .36)) / Math.pow(1.8 - .39, 2)
+            , S = 1.061725 * c - 5.472096 + .927904 * m + 1.56071 * h + .7418021 * E + .9165415 * b + 1.464183 * f + 1.893621 * g - .0075185 * N + .0036657 * A - .5181509 * y - 1.000672 * v + .1448936 * u - .7541669 * p + .8268748 * d
+            , D = .6891587 * c - 7.381628 + .6246303 * m + .0365738 * s + 1.349889 * h + .2480613 * E + 1.054497 * b + 1.067452 * f + 1.26527 * g - .4851036 * y - .9821122 * v + .82691 * d
+            , P = .850114 * c - 6.169259 + .0293034 * s + .8838124 * h + .197697 * E + .4630691 * b + .1229086 * f + .4320639 * g - .003719 * N - 4196e-7 * A - .4560354 * y - .4166421 * v - .5176601 * p
+            , w = Math.exp(S) / (1 + Math.exp(S))
+            , _ = Math.exp(D) / (1 + Math.exp(D))
+            , T = 1 - (1 - w) * (1 - _)
+            , x = 1 - (1 - w) * (1 - _) * (1 - Math.exp(P) / (1 + Math.exp(P)))
+            , k = .2988972 * c - 2.287235 + .5076108 * m + .6117639 * h - .1508734 * E - .4641384 * b - .3442967 * f - .1648213 * g - .0054196 * N + .0021578 * A - .4460345 * y - .4612017 * v + 1.361681 * C - 1.746094 * M - .1820302 * p + .2481661 * d + .0069088 * s
+            , H = Math.exp(k) / (1 + Math.exp(k));
+        const obj = {
+            age: t,
+            albumin: i,
+            asa: l,
+            bilirubin: u,
+            bmi: p,
+            category: r,
+            emergency: n,
+            nafld: d,
+            platelet: o
+        }
+        let accuracyReduced = (t < 40 || t > 85 || i < 1.5 || i > 5 || u < 0.2 || u > 5 || o < 30 || o > 450);
+        return a.span_30 = convertToPercentString(w),
+            a.span_90 = convertToPercentString(T),
+            a.span_180 = convertToPercentString(x),
+            a.span_decomp = convertToPercentString(H),
+            a.accuracyReduced = accuracyReduced,
+            a
+
+    }
+</script>
+
+</html>

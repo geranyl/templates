@@ -204,7 +204,7 @@
                     clipboardText += '\n Modified FRS for FHx of early CVD: ' + frs.modified + '%';
                 }
 
-                let lipids = "Total Cholesterol " + patient.tc + ", HDL-C " + patient.hdl + ", non-HDL-C " + (roundNum(Number(patient.tc) - Number(patient.hdl), 2)) + ", LDL-C " + patient.ldl + ", triglycerides " + patient.tg;
+                let lipids = "Total Cholesterol " + roundNum(Number(patient.tc),2) + ", HDL-C " + roundNum(Number(patient.hdl),2) + ", non-HDL-C " + (roundNum(Number(patient.tc) - Number(patient.hdl), 2)) + ", LDL-C " + roundNum(Number(patient.ldl),2) + ", triglycerides " + roundNum(Number(patient.tg),2);
                 byId("patient-lipids").textContent = lipids;
                 let fib4Result = getFib4();
                 byId("fib-4").textContent = fib4Result;
@@ -226,7 +226,7 @@
     <div class="main-container">
         <div class="container">
             <h1>Metabolic Profile</h1>
-            <p><small>Page last updated October 23, 2022</small></p>
+            <p><small>Page last updated November 17, 2022</small></p>
             <h4>For Clipboard</h4>
             <div id="for-clipboard" class="clip"></div>
             <button class="button" id="copy">Copy To Clipboard</button>
